@@ -23,7 +23,6 @@ using namespace std;
 
 int launch_seeder(bt_args_t &bt_args, be_node traverse_node) {
     printf("launching seeder\n");
-
     int seeder_sock, leecher_sock;
     /*client_addr_size*/;
     struct sockaddr_in seeder_addr, leecher_addr;
@@ -118,19 +117,22 @@ int launch_seeder(bt_args_t &bt_args, be_node traverse_node) {
         //stuff after the handshake
         //cout << client_addr.sin_addr.s_addr << "\n";
         //close(client_sock);
-        //initialize current piece
-        updateCurrentPiece(0, 0, '\0');
-        bt_args.sockets[current_peer + 1] = leecher_sock;
+        int iam_choked = 0;
+        bt_msg_t bt_msg;
+        recieve_message(leecher_sock, &bt_msg);
+        //initial interested request
+        if (bt_msg.bt_type == BT_INTERSTED) {
+            take_action(bt_args, bt_msg, current_peer, leecher_sock, iam_choked);
+            //send bitfield
+        }
+        while (true) {
+            recieve_message(leecher_sock, &bt_msg);
+            take_action(bt_args, bt_msg, current_peer, leecher_sock, iam_choked);
+        }
     } else {
         cout << "accept failed";
     }
-
-    bt_msg_t bt_msg;
-    recieve_message(leecher_sock,&bt_msg);
-    cout<<"";
-    while (1) {
-
-    }
+    return EXIT_SUCCESS;
 }
 
 void launch_leecher(bt_args_t bt_args, be_node traverse_node) {
@@ -214,13 +216,29 @@ void launch_leecher(bt_args_t bt_args, be_node traverse_node) {
             cout << "handshake success\n";
 
             //stuff after handshake
-            //initialize current piece
-            updateCurrentPiece(0, 0, '\0');
-            sendInitialInterest(socketFD);
+            sendInitialInterest(socketFD, i);
+            bt_msg bt_msg;
+            recieve_message(socketFD, bt_msg);
+            bt_args.peers[i]->choked = 0;
+            bt_args.peers[i]->interested = 1;
+            int iam_choked;
+            take_action(bt_args, bt_msg, i, socketFD, iam_choked);
+            int is_incomplete = 0;
+            while (is_incomplete) {
+                int next_needed_piece = 0; //cal function
+                long torrent_length = bt_args.bt_info->length;
+                long finished = (next_needed_piece * RequestSize);
+                int send_length;
+                if (finished + RequestSize > torrent_length) {
+                    send_length = RequestSize;
+                } else {
+                    send_length = torrent_length - send_length;
+                }
+
+                requestPiece();
+            }
             (void) shutdown(socketFD, SHUT_RDWR);
             close(socketFD);
-        }
-        while (1) {
         }
     }
 }
@@ -286,11 +304,11 @@ int main(int argc, char * argv[]) {
         //bt_args.peers[i] != NULL
         //printf("this can not print %u\n",bt_args.peers[0]->port);
         print_peer(bt_args.peers[0]);
-        
-            //-------------TODO---------------
-            //createPieceToSend(bt_args, 2);
-            //--------------------------------
-        
+
+        //-------------TODO---------------
+        //createPieceToSend(bt_args, 2);
+        //--------------------------------
+
         if (bt_args.peers[0] == NULL) {
             printf("going to launch seeder\n");
             launch_seeder(bt_args, *traverseNode);
@@ -299,25 +317,25 @@ int main(int argc, char * argv[]) {
             init_bitfield(&bt_args, false);
             launch_leecher(bt_args, *traverseNode);
         }
-        
-       /* //contact_tracker(&bt_args);
-        //connect with the tracker to get the information from trackers
 
-        //try to accept incoming connection from new peer
+        /* //contact_tracker(&bt_args);
+         //connect with the tracker to get the information from trackers
+
+         //try to accept incoming connection from new peer
 
 
-        //poll current peers for incoming traffic
-        //   write pieces to files
-        //   udpdate peers choke or unchoke status
-        //   responses to have/havenots/interested etc.
+         //poll current peers for incoming traffic
+         //   write pieces to files
+         //   udpdate peers choke or unchoke status
+         //   responses to have/havenots/interested etc.
 
-        //for peers that are not choked
-        //   request pieaces from outcoming traffic
+         //for peers that are not choked
+         //   request pieaces from outcoming traffic
 
-        //check livelenss of peers and replace dead (or useless) peers
-        //with new potentially useful peers
+         //check livelenss of peers and replace dead (or useless) peers
+         //with new potentially useful peers
 
-        //update peers,*/
+         //update peers,*/
 
     }
     return 0;
