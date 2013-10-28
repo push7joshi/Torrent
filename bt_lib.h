@@ -148,6 +148,7 @@ typedef struct bt_msg {
 
 
 
+
 int parse_bt_info(bt_info_t * bt_info, be_node * node);
 
 /*choose a random id for this node*/
@@ -204,9 +205,6 @@ void be_dump1(be_node *node, bt_info_t *torrInfo);
   such as peer list*/
 int contact_tracker(bt_args_t * bt_args);
 
-    //update current piece in library
-void updateCurrentPiece(int offset, int index, char *block);
-
     //Initial interest after handshake
 void sendInitialInterest(int socketFD);
 
@@ -220,7 +218,6 @@ void init_bitfield(bt_args_t * bt_args, bool init_val);
 
 void send_message(int sock, bt_msg_t bt_msg);
 void recieve_message(int sock, bt_msg_t * bt_msg);
-
-int nextNeededPiece();
+void take_action(bt_args_t &bt_args, bt_msg_t &bt_msg, int current_peer, int sock, int &iam_choked);
 
 #endif
